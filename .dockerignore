@@ -1,0 +1,13 @@
+# FOLDERS
+datasets
+venv
+
+# files
+hand_data_loader.py
+Rnet.py
+
+# MODELS
+models/best.pt
+models/hand_yolo.pt
+models/mobnet.pt
+models/r50.pt
