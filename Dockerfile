@@ -1,6 +1,5 @@
-FROM python:3.8.18-alpipne3.17
-ADD . /app
+FROM python:3.8
+COPY . /app
 WORKDIR /app
-RUN pip install -r requirements.txt
-EXPOSE 3000
-CMD ["python", "./hand_track.py"]
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y && pip install -r requirements.txt
+CMD ["python3", "hand_tracker.py"]

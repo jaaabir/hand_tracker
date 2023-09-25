@@ -1,6 +1,7 @@
 # FOLDERS
 datasets
 venv
+__pycache__
 
 # files
 hand_data_loader.py

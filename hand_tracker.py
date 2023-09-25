@@ -9,7 +9,7 @@ from Mobnet import MobNet as Model, predict_
 from ultralytics import YOLO
 from torchvision.utils import draw_bounding_boxes as dbb
 import matplotlib.colors as mcolors
-import imutils
+import pafy
 
 def renderPose(img, uv, return_lbl = False):
     colors = ['blue', 'orange', 'lime', 'yellow', 'cyan', 'black']
@@ -56,7 +56,7 @@ def load_model(fname, root = 'models'):
     return torch.load(path)
 
 def show_img(image, lable = None):
-    if lable:
+    if lable is not None:
         x,y = 10, 10
         color = (255,0,0)
         cv.putText(image, str(lable), (x,y), cv.FONT_HERSHEY_PLAIN, 1, color, 1, cv.LINE_AA)
@@ -67,7 +67,8 @@ def flipImage(image):
     img = transform(image = image)['image']
     return img
     
-def move_mouse(x, y, duration = 0.1):
+def control_mouse(x, y, duration = 0.1):
+    x, y = int(x), int(y)
     pg.moveTo(x, y, duration = duration)
     
 def close_cam(cap):
@@ -90,41 +91,52 @@ def final_transform(kpts, img_size = [480, 640]):
     kpts = np.array(kpts)
     return kpts
     
-def main(vc = 0, mode = 'detect', move_mouse = False):
+def main(vc = 0, mode = 'detect', move_mouse = False, device = 'cpu'):
     # mode : [ detect, keypoints, both ]
-    cap = cv.VideoCapture(vc, cv.CAP_DSHOW)
+    choice = input('Caputure from cam or yt (c/y) : ')
+    if choice == 'y':
+        video = pafy.new(input('yt link : '))
+        best = video.getbest(preftype="webm")
+        cap = cv.VideoCapture(best.url)
+    else:
+        cap = cv.VideoCapture(vc, cv.CAP_DSHOW) 
     old_fps, new_fps = 0, 0
     while cap.isOpened():
         new_fps = time()
         _, frame = cap.read()
         
         fps  = 1/(new_fps - old_fps)
-        image = flipImage(np.array(frame))
-        image = imutils.resize(image, width=1920, height=1080)
+        image = np.array(frame)
+        # image = imutils.resize(image, width=1920, height=1080)
         box = []
         bb_img = None
         
         if mode == 'detect' or mode == 'both':
-            result = YMODEL.predict(image)[0]
-            conf = result.boxes.conf.numpy()
+            result = YMODEL.predict(image.copy())[0]
+            conf = result.boxes.conf.cpu().numpy()
             if conf.shape[0] > 0:
                 top_conf = np.argmax(conf)
                 box = result.boxes.xyxy[top_conf]
                 bb_img = renderBox(image.copy(), box)
                 
         kp_img = None
+        index_finger = None
             
         if (mode == 'keypoints' or mode == 'both') and len(box) > 0:
-            img, kpts  = predict_(MODEL, image, box)
-            # kpts  = final_transform(kpts, img_size = image.shape)
+            img, kpts  = predict_(MODEL, image.copy(), box, device = device)
+            mkpt  = final_transform(kpts, img_size = (1080, 1920))
+            index_finger = mkpt[3]
             kp_img   = renderPose(img.copy(), kpts)
+
         
         
-        show_img(kp_img if kp_img is not None else image, fps)
+        if kp_img is not None:
+            show_img(kp_img, fps)
         
-        if move_mouse:
-            x, y = kpts[8]
-            move_mouse(x, y)
+        print(index_finger)
+        if move_mouse and index_finger is not None:
+            x, y = index_finger
+            control_mouse(x, y)
         
         old_fps = new_fps
 
@@ -135,8 +147,12 @@ def main(vc = 0, mode = 'detect', move_mouse = False):
             
 if __name__ == '__main__':
     IMG_SIZE = 224
+    device = 'cuda'
     MODEL = Model(k = 21 * 2)
     MODEL.load_state_dict(load_model('mobnet3.pt'))
     YMODEL = YOLO(os.path.join('models','best.pt'))
+    MODEL.to(device)
+    YMODEL.to(device)
     print(YMODEL)
-    main(mode='both')
+    print(f'GPU : {torch.cuda.is_available()}')
+    main(vc = 0, mode='both', move_mouse=True, device = device)

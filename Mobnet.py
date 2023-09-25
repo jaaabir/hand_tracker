@@ -12,7 +12,7 @@ class MobNet(pl.LightningModule):
         self.test_size = test_size
         self.verbose = verbose
         self.criterion = nn.MSELoss().cuda()
-        self.model = models.mobilenet_v2(pretrained=True, progress = True)
+        self.model = models.mobilenet_v2()
         num_features = self.model.classifier[1].in_features
         if verbose:
             print(f'Number of features in the last layer : {num_features}')
@@ -59,16 +59,18 @@ class MobNet(pl.LightningModule):
         return [optimizer], [scheduler]
     
     
-def predict_(model, img, bbox, IMG_SIZE = 224):
+def predict_(model, img, bbox, IMG_SIZE = 224, device = 'cpu'):
     x1,y1,x2,y2 = list(map(int, bbox))
     transformer = A.Compose([
         A.Crop(x_min = x1, y_min = y1, x_max = x2, y_max = y2, always_apply=True, p=1.0), 
         A.Resize(IMG_SIZE, IMG_SIZE)])
     img = (transformer(image = img)['image'] / 255).astype(np.float32) 
     img = torch.from_numpy(img).permute(-1, 0, 1) 
-    img = torch.unsqueeze(img, dim = 0)                   
+    img = torch.unsqueeze(img, dim = 0).to(device)             
     model.eval()
     with torch.no_grad():
         preds = torch.squeeze(model(img))
+    img = img.cpu()
+    preds = preds.cpu()
     return torch.squeeze(img.detach()).permute(1,-1,0).numpy().copy(), (preds.reshape(-1, 2).numpy() * IMG_SIZE).astype(np.uint32)
     

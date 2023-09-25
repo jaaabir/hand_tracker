@@ -6,3 +6,8 @@ pytorch-lightning==1.9.0
 opencv-python
 scikit-image==0.19.3
 pyautogui
+albumentations
+ultralytics
+imutils
+pafy
+youtube-dl
