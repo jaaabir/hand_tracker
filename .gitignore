@@ -1,0 +1,17 @@
+# FOLDERS
+datasets
+venv
+__pycache__
+SynthHands_Release
+.ipynb_checkpoints
+lightning_logs
+
+# files
+hand_data_loader.py
+Rnet.py
+*.csv
+*.pt
+
+# MODELS
+models/*
+syn-hand/models/*
